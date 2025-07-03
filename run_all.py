@@ -1,25 +1,42 @@
+import subprocess
 import multiprocessing
 import time
-from server import run_server
-from clients.client_lstm import run_client_lstm
-from clients.client_gru import run_client_gru
-from clients.client_transformer import run_client_transformer
+import os
 
-if __name__ == '__main__':
-    rounds = 3
+def run_client(script):
+    subprocess.run(["python", script])
 
-    p1 = multiprocessing.Process(target=run_client_lstm, args=(rounds,))
-    p2 = multiprocessing.Process(target=run_client_gru, args=(rounds,))
-    p3 = multiprocessing.Process(target=run_client_transformer, args=(rounds,))
-    p4 = multiprocessing.Process(target=run_server, args=(rounds,))
+def run_server(server_script):
+    subprocess.run(["python", server_script])
 
-    p1.start()
-    p2.start()
-    p3.start()
-    time.sleep(3)  # ensure clients start first
-    p4.start()
+if __name__ == "__main__":
+    max_updates = 30  # Total updates for the experiment (set as needed)
 
-    p1.join()
-    p2.join()
-    p3.join()
-    p4.join()
+    client_scripts = [
+        "clients/client_lstm.py",
+        "clients/client_tcn.py",
+        "clients/client_tst.py"
+    ]
+
+    server_script = "server.py"
+
+    # Start server process
+    server_proc = multiprocessing.Process(target=run_server, args=(server_script,))
+    server_proc.start()
+    time.sleep(2)  # Give server a moment to start
+
+    # Start client processes
+    processes = []
+    for script in client_scripts:
+        p = multiprocessing.Process(target=run_client, args=(script,))
+        p.start()
+        processes.append(p)
+
+    # Wait for all clients to finish
+    for p in processes:
+        p.join()
+
+    # Wait for server to finish
+    server_proc.join()
+
+    print("\n✅ FedFa run completed.\n")

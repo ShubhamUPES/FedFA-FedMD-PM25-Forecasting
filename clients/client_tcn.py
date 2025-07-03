@@ -3,24 +3,24 @@ import time
 import numpy as np
 import pandas as pd
 from utils.data_utils import load_and_preprocess_data
-from utils.model_utils import build_lstm_model
+from utils.model_utils import build_tcn_model
 from utils.distill_utils import compute_logits
 from sklearn.metrics import mean_squared_error, r2_score
 from tensorflow.keras.callbacks import EarlyStopping
 import pickle
 
-def run_client_lstm(max_updates=10):
-    client_name = "LSTM_Delhi"
+def run_client_tcn(max_updates=10):
+    client_name = "TCN_Bengaluru"
     os.makedirs("logs", exist_ok=True)
 
-    X, y = load_and_preprocess_data("private_datasets/Delhi_PM25.csv")
+    X, y = load_and_preprocess_data("private_datasets/Bengaluru_PM25.csv")
     public_X, _ = load_and_preprocess_data("public_dataset/public_data.csv")
 
     split = int(0.8 * len(X))
     X_train, y_train = X[:split], y[:split]
     X_val, y_val = X[split:], y[split:]
 
-    model = build_lstm_model(X.shape[1:])
+    model = build_tcn_model(X.shape[1:])
 
     metrics_path = f"logs/{client_name}_metrics_fedfa.csv"
     if not os.path.exists(metrics_path):
@@ -45,17 +45,14 @@ def run_client_lstm(max_updates=10):
 
         print(f"[{client_name}] Computing public logits...")
         logits = compute_logits(model, public_X)
-        # Save logits for server (FedFa: always same file)
         with open(f"logs/{client_name}_logits_update.pkl", "wb") as f:
             pickle.dump(logits, f)
 
-        # Wait for new consensus logits
         wait_start = time.time()
         while not os.path.exists(f"logs/consensus_logits_latest.pkl"):
             time.sleep(0.5)
         wait_time = time.time() - wait_start
 
-        # Load consensus
         with open(f"logs/consensus_logits_latest.pkl", "rb") as f:
             consensus = pickle.load(f)
         consensus = consensus.flatten()
@@ -77,4 +74,4 @@ def run_client_lstm(max_updates=10):
         update_id += 1
 
 if __name__ == "__main__":
-    run_client_lstm(max_updates=10)
+    run_client_tcn(max_updates=10)
